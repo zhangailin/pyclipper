@@ -1,0 +1,11 @@
+.python-version
+build/
+.idea
+dist
+pyclipper.egg-info
+*.so
+PyClipper/PyClipper.cpp
+*.pyc
+MANIFEST
+.eggs/
+PyClipper/misc
