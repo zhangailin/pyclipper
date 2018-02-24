@@ -1,9 +1,0 @@
-.idea
-build
-dist
-pyclipper.egg-info
-*.so
-pyclipper/pyclipper.cpp
-*.pyc
-MANIFEST
-.eggs/
