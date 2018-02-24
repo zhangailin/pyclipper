@@ -9,6 +9,8 @@ import numpy as np
 cnp.import_array()
 
 
+SCALING_FACTOR = 1
+
 cdef extern from "clipper.hpp" namespace "ClipperLib":
      # define use_int32 1 in setup.py
      ctypedef int cInt
@@ -275,11 +277,11 @@ class ClipperException(Exception):
 #------------------------------ IntRect -----------------------------
 cdef class IntRect:
     cdef:
-        int left
-        int top
-        int right
-        int bottom
-    def __init__(IntRect self,
+        public int left
+        public int top
+        public int right
+        public int bottom
+    def __cinit__(IntRect self,
             int left,
             int top,
             int right,
@@ -293,15 +295,15 @@ cdef class IntRect:
 #------------------------------ PolyNode -----------------------------
 cdef class PolyNode:
     cdef:
-        Path Contour
-        list Childs
-        PolyNode Parent
-        bool IsHole
-        bool IsOpen
-        int depth
+        public Path Contour
+        public list Childs
+        public PolyNode Parent
+        public bint IsHole
+        public bint IsOpen
+        public int depth
 
-    def __init__(self):
-        self.Path = np.empty((0, 0), dtype=np.int32)
+    def __cinit__(self):
+        self.Contour = np.empty((0, 2), dtype=np.int32)
         self.Childs = []
         self.Parent = None
         self.IsHole = False

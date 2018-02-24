@@ -4,8 +4,10 @@ build/
 dist
 pyclipper.egg-info
 *.so
+*.dll
 PyClipper/PyClipper.cpp
 *.pyc
 MANIFEST
 .eggs/
 PyClipper/misc
+.*.swp

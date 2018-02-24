@@ -48,6 +48,8 @@
 #include <ostream>
 #include <functional>
 
+#include <iostream>
+
 namespace ClipperLib {
 
 static double const pi = 3.141592653589793238;
@@ -4283,6 +4285,9 @@ void Clipper::DoSimplePolygons()
 void ReversePath(Path& p)
 {
   std::reverse(p.begin(), p.end());
+  for(auto e : p) {
+      std::cout << e.X << ":" << e.Y << std::endl;
+  }
 }
 //------------------------------------------------------------------------------
 
