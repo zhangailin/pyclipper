@@ -5,23 +5,23 @@ Tests for PyClipper wrapper library.
 
 from __future__ import print_function
 from unittest import TestCase, main
-import sys
+# import sys
 import numpy as np
 
-if sys.version_info < (3,):
-    integer_types = (int, long)
-else:
-    integer_types = (int,)
-
 import PyClipper
+from PyClipper import point_dtype
+
+integer_types = (int,)
+
+# point_dtype = [('X', 'i4'), ('Y', 'i4')]
 
 # Example polygons from http://www.angusj.com/delphi/clipper.php
-PATH_SUBJ_1 = np.array([[180, 200], [260, 200], [260, 150], [180, 150]], dtype=np.int32, order="c")  # square, orientation is False
-PATH_SUBJ_2 = np.array([[215, 160], [230, 190], [200, 190]], dtype=np.int32)  # triangle
-PATH_CLIP_1 = np.array([[190, 210], [240, 210], [240, 130], [190, 130]], dtype=np.int32)  # square
-PATH_SIGMA = np.array([[300, 400], [100, 400], [200, 300], [100, 200], [300, 200]], dtype=np.int32)  # greek letter sigma
-PATTERN = np.array([[4, -6], [6, -6], [-4, 6], [-6, 6]], dtype=np.int32)
-INVALID_PATH = np.array([[1, 1], ], dtype=np.int32)  # less than 2 vertices
+PATH_SUBJ_1 = np.array([(180, 200), (260, 200), (260, 150), (180, 150)], dtype=point_dtype, order="c")  # square, orientation is False
+PATH_SUBJ_2 = np.array([(215, 160), (230, 190), (200, 190)], dtype=point_dtype)  # triangle
+PATH_CLIP_1 = np.array([(190, 210), (240, 210), (240, 130), (190, 130)], dtype=point_dtype)  # square
+PATH_SIGMA = np.array([(300, 400), (100, 400), (200, 300), (100, 200), (300, 200)], dtype=point_dtype)  # greek letter sigma
+PATTERN = np.array([(4, -6), (6, -6), (-4, 6), (-6, 6)], dtype=point_dtype)
+INVALID_PATH = np.array([(1, 1), ], dtype=point_dtype)  # less than 2 vertices
 
 
 class TestPyClipperModule(TestCase):
@@ -48,20 +48,22 @@ class TestNamespaceMethods(TestCase):
     def test_area(self):
         # area less than 0 because orientation is False
         area_neg = PyClipper.Area(PATH_SUBJ_1)
+        print(area_neg)
         area_pos = PyClipper.Area(np.ascontiguousarray(PATH_SUBJ_1[::-1]))
+        print(area_pos)
         self.assertLess(area_neg, 0)
         self.assertGreater(area_pos, 0)
         self.assertEqual(abs(area_neg), area_pos)
 
     def test_point_in_polygon(self):
         # on polygon
-        self.assertEqual(PyClipper.PointInPolygon(np.array((180, 200), dtype=np.int32), PATH_SUBJ_1), -1)
+        self.assertEqual(PyClipper.PointInPolygon(np.array((180, 200), dtype=point_dtype), PATH_SUBJ_1), -1)
 
         # in polygon
-        self.assertEqual(PyClipper.PointInPolygon(np.array((200, 180), dtype=np.int32), PATH_SUBJ_1), 1)
+        self.assertEqual(PyClipper.PointInPolygon(np.array((200, 180), dtype=point_dtype), PATH_SUBJ_1), 1)
 
         # outside of polygon
-        self.assertEqual(PyClipper.PointInPolygon(np.array((500, 500), dtype=np.int32), PATH_SUBJ_1), 0)
+        self.assertEqual(PyClipper.PointInPolygon(np.array((500, 500), dtype=point_dtype), PATH_SUBJ_1), 0)
 
     def test_minkowski_sum(self):
         solution = PyClipper.MinkowskiSum(PATTERN, PATH_SIGMA, False)
@@ -78,8 +80,6 @@ class TestNamespaceMethods(TestCase):
     def test_reverse_path(self):
         solution = PyClipper.ReversePath(PATH_SUBJ_1)
         manualy_reversed = np.ascontiguousarray(PATH_SUBJ_1[::-1])
-        print(solution)
-        print(manualy_reversed)
         self.check_reversed_path(solution, manualy_reversed)
 
     def test_reverse_paths(self):
@@ -92,9 +92,8 @@ class TestNamespaceMethods(TestCase):
             return False
 
         for i in range(len(path_1)):
-            print(path_1[i][0], path_1[i][1])
-            #self.assertEqual(path_1[i][0], path_2[i][0])
-            #self.assertEqual(path_1[i][1], path_2[i][1])
+            self.assertEqual(path_1[i]['X'], path_2[i]['X'])
+            self.assertEqual(path_1[i]['Y'], path_2[i]['Y'])
 
     def test_simplify_polygon(self):
         solution = PyClipper.SimplifyPolygon(PATH_SUBJ_1)
@@ -120,7 +119,6 @@ class TestNamespaceMethods(TestCase):
 class TestFilterPyPolyNode(TestCase):
     def setUp(self):
         tree = PyClipper.PolyNode()
-        #tree.Contour.append(PATH_CLIP_1)
         tree.Contour = PATH_CLIP_1
         tree.IsOpen = True
 
@@ -147,7 +145,6 @@ class TestFilterPyPolyNode(TestCase):
         child2 = PyClipper.PolyNode()
         child2.IsOpen = False
         child2.Parent = child
-        #child2.Contour = []
         child.Childs.append(child2)
 
         self.tree = tree
@@ -158,6 +155,7 @@ class TestFilterPyPolyNode(TestCase):
 
     def test_closed_paths_from_polytree(self):
         paths = PyClipper.ClosedPathsFromPolyTree(self.tree)
+        print(">>>", paths, "<<<")
         self.check_paths(paths, 2)
 
     def test_open_paths_from_polytree(self):
@@ -270,12 +268,12 @@ class TestPyClipperExecute(TestCase):
         pc = PyClipper.Clipper()
 
         # Some large triangle.
-        path = np.array([[0, 1], [0, 0], [2 ** 31 - 7, 0]], dtype=np.int32)
+        paths = [np.array([(0, 1), (0, 0), (2 ** 15 - 7, 0)], dtype=point_dtype)]
 
-        pc.AddPaths([path], PyClipper.PT_SUBJECT, True)
+        pc.AddPaths(paths, PyClipper.PT_SUBJECT, True)
         result = pc.Execute(PyClipper.PT_CLIP, PyClipper.PFT_EVENODD, PyClipper.PFT_EVENODD)
 
-        assert result == path
+        assert result == paths
 
     def check_pypolynode(self, node):
         self.assertTrue(len(node.Contour) is 0 or len(node.Contour) > 2)

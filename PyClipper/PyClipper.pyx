@@ -160,37 +160,56 @@ PFT_NONZERO = pftNonZero
 PFT_POSITIVE = pftPositive
 PFT_NEGATIVE = pftNegative
 
+point_dtype = [('X', 'i4'), ('Y', 'i4')]
 
-ctypedef int[:] IntPoint
-ctypedef int[:, ::1] Path
-
+cdef packed struct IntPoint:
+    int X
+    int Y
+ctypedef IntPoint[:] Path
+#ctypedef int[:] IntPoint
 
 def puts_c_path(c_Path path):
     for i in range(path.size()):
         print(path.at(i).X, path.at(i).Y)
 
 
-cdef IntPoint _from_clipper_point(c_IntPoint c_point):
-    return <int[:2]>(<int*>&c_point)
+cdef cnp.ndarray _from_clipper_point(const c_IntPoint &c_point):
+    cdef cnp.ndarray res = np.empty(2, dtype=np.int32, order='C')
+    res[0] = c_point.X
+    res[1] = c_point.Y
+    return res
 
 
-cdef c_IntPoint _to_clipper_point(IntPoint point):
-    if point.ndim != 1 or point.size != 2:
-        raise ValueError("point must be 1d and size == 0")
-    return (<c_IntPoint*>&point[0])[0]
+cdef c_IntPoint _to_clipper_point(cnp.ndarray nda_point):
+    cdef c_IntPoint res
+    res.X = nda_point['X'].tolist()
+    res.Y = nda_point['Y'].tolist()
+    return res
 
 
-cdef Path _from_clipper_path(c_Path c_path):
-    cdef int *raw_ptr = <int*>&(c_path[0])
+cdef Path _from_clipper_path(const c_Path &c_path):
+    #cdef IntPoint *raw_ptr = <IntPoint*>&(c_path[0])
+    cdef IntPoint *raw_ptr = <IntPoint*>c_path.data()
     dim0 = c_path.size()
-    return <int[:dim0, :2]>raw_ptr
+    return <IntPoint[:dim0]>raw_ptr
 
 
 cdef c_Path _to_clipper_path(Path path):
-    cdef c_IntPoint *raw_ptr = <c_IntPoint*>&path[0][0]
     cdef vector[c_IntPoint] vec
-    cdef int len = path.size // 2
-    vec.assign(raw_ptr, raw_ptr + len)
+    cdef c_IntPoint item
+    for p in path:
+        item.X = p['X']
+        item.Y = p['Y']
+        vec.push_back(item)
+
+    return vec
+
+
+cdef c_Path _to_clipper_path_2(Path path):
+    cdef c_IntPoint *raw_ptr = <c_IntPoint*>&(path[0])
+    cdef int size = path.size
+    cdef vector[c_IntPoint] vec
+    vec.assign(raw_ptr, raw_ptr + size)
     return vec
 
 
@@ -303,7 +322,7 @@ cdef class PolyNode:
         public int depth
 
     def __cinit__(self):
-        self.Contour = np.empty((0, 2), dtype=np.int32)
+        self.Contour = np.empty(0, dtype=point_dtype)
         self.Childs = []
         self.Parent = None
         self.IsHole = False
@@ -339,12 +358,12 @@ cpdef double Area(Path poly):
     return <double>c_Area(_to_clipper_path(poly))
 
 
-cpdef int PointInPolygon(IntPoint point, Path poly):
+cpdef int PointInPolygon(cnp.ndarray nda_point, Path poly):
     """ Determine where does the point lie regarding the provided polygon.
     More info: http://www.angusj.com/delphi/clipper/documentation/Docs/Units/ClipperLib/Functions/PointInPolygon.htm
 
     Keyword arguments:
-    point -- point in question
+    nda_point -- point in question in np.ndarray format
     poly  -- closed polygon
 
     Returns:
@@ -353,7 +372,7 @@ cpdef int PointInPolygon(IntPoint point, Path poly):
     1  -- point is in polygon
     """
 
-    return <int>c_PointInPolygon(_to_clipper_point(point),
+    return <int>c_PointInPolygon(_to_clipper_point(nda_point),
             _to_clipper_path(poly))
 
 

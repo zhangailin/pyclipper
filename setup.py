@@ -9,7 +9,10 @@ ext = Extension("PyClipper",
                 sources=sources,
                 language="c++",
                 include_dirs=[np.get_include()],
-                define_macros=[('use_int32', 1)]
+                define_macros=[
+                    ('use_int32', 1),
+                    ('use_xyz', 0)
+                    ]
                 )
 
 setup(ext_modules=cythonize([ext]))
