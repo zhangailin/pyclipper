@@ -273,7 +273,12 @@ class TestPyClipperExecute(TestCase):
         pc.AddPaths(paths, PyClipper.PT_SUBJECT, True)
         result = pc.Execute(PyClipper.PT_CLIP, PyClipper.PFT_EVENODD, PyClipper.PFT_EVENODD)
 
-        assert result == paths
+        print(">>>")
+        print(np.asarray(result[0]))
+        print(np.asarray(paths[0]))
+        print("<<<")
+
+        assert np.asarray(result[0]) == np.asarray(paths[0])
 
     def check_pypolynode(self, node):
         self.assertTrue(len(node.Contour) is 0 or len(node.Contour) > 2)
@@ -281,7 +286,7 @@ class TestPyClipperExecute(TestCase):
         # check vertex coordinate, should not be an iterable (in that case
         # that means that node.Contour is a list of paths, should be path
         if node.Contour:
-            self.assertFalse(hasattr(node.Contour[0][0], '__iter__'))
+            self.assertFalse(hasattr(node.Contour[0], '__iter__'))
 
         for child in node.Childs:
             self.check_pypolynode(child)
@@ -433,12 +438,13 @@ def _do_solutions_match(paths_1, paths_2, factor=None):
     paths_1 = [_modify_vertices(p, multiplier=factor, converter=round if factor else None) for p in paths_1]
     paths_2 = [_modify_vertices(p, multiplier=factor, converter=round if factor else None) for p in paths_2]
 
-    return all(((p_1 in paths_2) for p_1 in paths_1))
+    print(paths_1)
+    print(paths_2)
+
+    return all([(p_1 in paths_2) for p_1 in paths_1])
 
 
 def _modify_vertices(path, addend=0.0, multiplier=1.0, converter=None):
-    path = path[:]
-
     def convert_coordinate(c):
         if multiplier is not None:
             c *= multiplier
@@ -448,8 +454,12 @@ def _modify_vertices(path, addend=0.0, multiplier=1.0, converter=None):
             c = converter(c)
         return c
 
-    return [[convert_coordinate(c) for c in v] for v in path]
+    res = np.empty(path.shape, dtype=point_dtype)
+    for i, p in enumerate(path):
+        res[i]['X'] = convert_coordinate(path[i]['X'])
+        res[i]['Y'] = convert_coordinate(path[i]['Y'])
 
+    return res
 
 def run_tests():
     main()
