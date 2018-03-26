@@ -264,7 +264,7 @@ class TestPyclipperExecute(TestCase):
         pc = pyclipper.Pyclipper()
 
         # Some large triangle.
-        path = [[[0, 1], [0, 0], [15 ** 15, 0]]]
+        path = [[[0, 1], [0, 0], [13 ** 8, 0]]]
 
         pc.AddPaths(path, pyclipper.PT_SUBJECT, True)
         result = pc.Execute(pyclipper.PT_CLIP, pyclipper.PFT_EVENODD, pyclipper.PFT_EVENODD)
@@ -354,7 +354,7 @@ class TestScalingFactorWarning(TestCase):
 
 
 class TestScalingFunctions(TestCase):
-    scale = 2 ** 31
+    scale = 2 ** 15
     path = [(0, 0), (1, 1)]
     paths = [path] * 3
 
@@ -417,7 +417,7 @@ class TestNonStandardNumbers(TestCase):
         path = [Point2D(v) for v in [(0,0), (0,1)]]
         assert type(path[0].x) == Zero
         path = pyclipper.scale_to_clipper(path)
-        assert path == [[0, 0], [0, 2147483648]]
+        assert path == [[0, 0], [0, 32768]]
 
 
 def _do_solutions_match(paths_1, paths_2, factor=None):
