@@ -7,6 +7,7 @@ About
     :target: https://travis-ci.org/greginvm/pyclipper
 .. image:: https://ci.appveyor.com/api/projects/status/8w19hrxjoohu489c/branch/master?svg=true
     :target: https://ci.appveyor.com/project/greginvm/pyclipper/branch/master
+Folked from https://github.com/greginvm/pyclipper
 
 Pyclipper is a Cython wrapper exposing public functions and classes of
 the C++ translation of the `Angus Johnson's Clipper library (ver.
