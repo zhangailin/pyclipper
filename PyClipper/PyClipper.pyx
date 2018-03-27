@@ -26,9 +26,6 @@ import warnings as _warnings
 
 
 
-cdef extern from "extra_defines.hpp":
-    cdef int _USE_XYZ
-
 #============================= Enum mapping ================
 
 JT_SQUARE = cl.jtSquare
@@ -54,11 +51,19 @@ PFT_NONZERO  = cl.pftNonZero
 PFT_POSITIVE = cl.pftPositive
 PFT_NEGATIVE = cl.pftNegative
 
-#=============================  PyPolyNode =================
-class PyPolyNode:
+#=============================  PolyNode =================
+cdef class PolyNode:
     """
     Represents ClipperLibs' PolyTree and PolyNode data structures.
     """
+    cdef:
+        public list Contour
+        public list Childs
+        public PolyNode Parent
+        public bint IsHole
+        public bint IsOpen
+        public int depth
+
     def __init__(self):
         self.Contour = []
         self.Childs = []
@@ -246,11 +251,11 @@ def MinkowskiDiff(poly1, poly2):
 
 
 def PolyTreeToPaths(poly_node):
-    """ Converts a PyPolyNode to a list of paths.
+    """ Converts a PolyNode to a list of paths.
     More info: http://www.angusj.com/delphi/clipper/documentation/Docs/Units/ClipperLib/Functions/PolyTreeToPaths.htm
 
     Keyword arguments:
-    py_poly_node -- PyPolyNode to be filtered
+    py_poly_node -- PolyNode to be filtered
 
     Returns:
     list of paths
@@ -261,11 +266,11 @@ def PolyTreeToPaths(poly_node):
 
 
 def ClosedPathsFromPolyTree(poly_node):
-    """ Filters out open paths from the PyPolyNode and returns only closed paths.
+    """ Filters out open paths from the PolyNode and returns only closed paths.
     More info: http://www.angusj.com/delphi/clipper/documentation/Docs/Units/ClipperLib/Functions/ClosedPathsFromPolyTree.htm
 
     Keyword arguments:
-    py_poly_node -- PyPolyNode to be filtered
+    py_poly_node -- PolyNode to be filtered
 
     Returns:
     list of closed paths
@@ -276,12 +281,12 @@ def ClosedPathsFromPolyTree(poly_node):
     return paths
 
 
-def OpenPathsFromPolyTree(poly_node):
-    """ Filters out closed paths from the PyPolyNode and returns only open paths.
+def OpenPathsFromPolyTree(PolyNode poly_node):
+    """ Filters out closed paths from the PolyNode and returns only open paths.
     More info: http://www.angusj.com/delphi/clipper/documentation/Docs/Units/ClipperLib/Functions/OpenPathsFromPolyTree.htm
 
     Keyword arguments:
-    py_poly_node -- PyPolyNode to be filtered
+    py_poly_node -- PolyNode to be filtered
 
     Returns:
     list of open paths
@@ -327,7 +332,7 @@ def ReversePaths(paths):
     return _from_clipper_paths(c_paths)
 
 
-def scale_to_clipper(path_or_paths, scale = 2 ** 15):
+def scale_to_clipper(path_or_paths, scale = 2 ** 31):
     """
     Take a path or list of paths with coordinates represented by floats and scale them using the specified factor.
     This function can be user to convert paths to a representation which is more appropriate for Clipper.
@@ -440,6 +445,7 @@ cdef class Pyclipper:
         Raises:
         ClipperException -- all paths are invalid for clipping
         """
+
         cdef cl.Paths c_paths = _to_clipper_paths(paths)
         cdef bint result = <bint> self.thisptr.AddPaths(c_paths, poly_type, <bint> closed)
         if not result:
@@ -484,7 +490,7 @@ cdef class Pyclipper:
         """
 
         cdef cl.Paths solution
-        cdef object success = <bint> self.thisptr.Execute(clip_type, solution, subj_fill_type, clip_fill_type)
+        cdef bint success = <bint> self.thisptr.Execute(clip_type, solution, subj_fill_type, clip_fill_type)
         if not success:
             raise ClipperException('Execution of clipper did not succeed!')
         return _from_clipper_paths(solution)
@@ -492,7 +498,7 @@ cdef class Pyclipper:
     def Execute2(self, cl.ClipType clip_type,
                  cl.PolyFillType subj_fill_type=cl.pftEvenOdd,
                  cl.PolyFillType clip_fill_type=cl.pftEvenOdd):
-        """ Performs the clipping operation and returns a PyPolyNode.
+        """ Performs the clipping operation and returns a PolyNode.
         More info: http://www.angusj.com/delphi/clipper/documentation/Docs/Units/ClipperLib/Classes/Clipper/Methods/Execute.htm
 
         Keyword arguments:
@@ -501,13 +507,13 @@ cdef class Pyclipper:
         clip_fill_type -- fill rule of clip paths
 
         Returns:
-        PyPolyNode
+        PolyNode
 
         Raises:
         ClipperException -- operation did not succeed
         """
         cdef cl.PolyTree solution
-        cdef object success = <bint> self.thisptr.Execute(clip_type, solution, subj_fill_type, clip_fill_type)
+        cdef bint success = <bint> self.thisptr.Execute(clip_type, solution, subj_fill_type, clip_fill_type)
         if not success:
             raise ClipperException('Execution of clipper did not succeed!')
         return _from_poly_tree(solution)
@@ -603,7 +609,7 @@ cdef class PyclipperOffset:
         return _from_clipper_paths(c_solution)
 
     def Execute2(self, double delta):
-        """ Performs the offset operation and returns a PyPolyNode with offset paths.
+        """ Performs the offset operation and returns a PolyNode with offset paths.
         More info: http://www.angusj.com/delphi/clipper/documentation/Docs/Units/ClipperLib/Classes/ClipperOffset/Methods/Execute.htm
 
         Keyword arguments:
@@ -611,7 +617,7 @@ cdef class PyclipperOffset:
                  positive delta expands them.
 
         Returns:
-        PyPolyNode
+        PolyNode
         """
         cdef cl.PolyTree solution
         self.thisptr.Execute(solution, delta)
@@ -662,7 +668,7 @@ cdef _filter_polynode(pypolynode, result, filter_func=None):
 
 
 cdef _from_poly_tree(cl.PolyTree &c_polytree):
-    poly_tree = PyPolyNode()
+    cdef PolyNode poly_tree = PolyNode()
     depths = [0]
     for i in xrange(c_polytree.ChildCount()):
         c_child = c_polytree.Childs[i]
@@ -675,7 +681,7 @@ cdef _from_poly_tree(cl.PolyTree &c_polytree):
 
 cdef _node_walk(cl.PolyNode *c_polynode, object parent):
 
-    py_node = PyPolyNode()
+    cdef PolyNode py_node = PolyNode()
     py_node.Parent = parent
 
     cdef object ishole = <bint>c_polynode.IsHole()
