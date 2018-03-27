@@ -224,7 +224,7 @@ class TestPyclipperExecute(TestCase):
 
     def test_get_bounds(self):
         bounds = self.pc.GetBounds()
-        self.assertIsInstance(bounds, pyclipper.PyIntRect)
+        self.assertIsInstance(bounds, pyclipper.IntRect)
         self.assertEqual(bounds.left, 180)
         self.assertEqual(bounds.right, 260)
         self.assertEqual(bounds.top, 130)

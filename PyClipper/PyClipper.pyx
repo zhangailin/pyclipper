@@ -73,8 +73,24 @@ cdef class PolyNode:
         self.depth = 0
 
 #=============================  Other objects ==============
-from collections import namedtuple
-PyIntRect = namedtuple('PyIntRect', ['left', 'top', 'right', 'bottom'])
+
+cdef class IntRect:
+    cdef:
+        public cl.cInt left
+        public cl.cInt top
+        public cl.cInt right
+        public cl.cInt bottom
+
+    def __init__(self, *,
+                 left,
+                 top,
+                 right,
+                 bottom):
+        self.left = left
+        self.top = top
+        self.right = right
+        self.bottom = bottom
+
 
 class ClipperException(Exception):
     pass
@@ -124,7 +140,7 @@ def PointInPolygon(point, poly):
     """
 
     return <int>cl.PointInPolygon(_to_clipper_point(point),
-                                    _to_clipper_path(poly))
+                                  _to_clipper_path(poly))
 
 
 def SimplifyPolygon(poly, cl.PolyFillType fill_type=cl.pftEvenOdd):
@@ -463,13 +479,12 @@ cdef class Pyclipper:
         More info: http://www.angusj.com/delphi/clipper/documentation/Docs/Units/ClipperLib/Classes/ClipperBase/Methods/GetBounds.htm
 
         Returns:
-        PyIntRect with left, right, bottom, top vertices that define the axis-aligned bounding rectangle.
+        IntRect with left, right, bottom, top vertices that define the axis-aligned bounding rectangle.
         """
         _check_scaling_factor()
 
         cdef cl.IntRect rr = <cl.IntRect> self.thisptr.GetBounds()
-        return PyIntRect(left=rr.left, top=rr.top,
-                         right=rr.right, bottom=rr.bottom)
+        return IntRect(left=rr.left, top=rr.top, right=rr.right, bottom=rr.bottom)
 
     def Execute(self, cl.ClipType clip_type,
                 cl.PolyFillType subj_fill_type=cl.pftEvenOdd,
@@ -718,7 +733,6 @@ cdef cl.Path _to_clipper_path(object polygon):
     _check_scaling_factor()
 
     cdef cl.Path path = cl.Path()
-    cdef cl.IntPoint p
     for v in polygon:
         path.push_back(_to_clipper_point(v))
     return path
@@ -745,13 +759,13 @@ cdef object _from_clipper_path(cl.Path path):
 
     poly = []
     cdef cl.IntPoint point
-    for i in xrange(path.size()):
+    for i in range(path.size()):
         point = path[i]
         poly.append([point.X, point.Y])
     return poly
 
 
-def _check_scaling_factor():
+cdef inline _check_scaling_factor():
     """
     Check whether SCALING_FACTOR has been set by the code using this library and warn the user that it has been
     deprecated and it's value is ignored.
