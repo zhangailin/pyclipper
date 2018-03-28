@@ -7,6 +7,7 @@ This wrapper was written by Maxime Chalton, Lukas Treyer, Gregor Ratajc and al.
 """
 import numpy as np
 cimport numpy as np
+from libc.stdint cimport int64_t
 
 cimport ClipperLib as cl
 
@@ -68,69 +69,83 @@ cdef cl.IntPoint _to_clipper_point(object py_point):
     return cl.IntPoint(py_point[0], py_point[1])
 
 
+cdef list _from_clipper_paths(cl.Paths paths):
+    cdef list polys = []
+
+    cdef cl.Path cl_path
+    cdef unsigned int i
+    for i in range(paths.size()):
+        cl_path = paths.at(i)
+        polys.append(Path.from_clipper_path(cl_path))
+
+    return polys
+
+
 cdef class IntPoint:
     cdef:
-        public int X
-        public int Y
+        public int64_t X
+        public int64_t Y
 
-    def __init__(self, int X, int Y):
+    def __init__(self, int64_t X, int64_t Y):
         self.X = X
         self.Y = Y
 
     def __repr__(self):
         return "IntPoint({}, {})".format(self.X, self.Y)
 
+    cdef cl.IntPoint to_clipper_point(self):
+        return cl.IntPoint(self.X, self.Y)
+
+    @staticmethod
+    cdef IntPoint from_clipper_point(cl.IntPoint cl_point):
+        return IntPoint(cl_point.X, cl_point.Y)
+
 
 cdef class Path:
     cdef:
-        np.ndarray _value
+        np.ndarray _array
         Py_ssize_t _size
+        cl.Path _cl_path
 
     def __init__(self, object polygon=None):
         if polygon is None:
-            self._value = None
+            self._array = None
             self._size = 0
         else:
-            self._value = np.asarray(polygon).reshape(-1, 2)
-            self._size = self._value.size // 2
+            self._array = np.asarray(polygon).reshape(-1, 2)
+            self._size = self._array.size // 2
+            self._cl_path = self.to_clipper_path()
 
     def __repr__(self):
-        if self._value is None:
+        if self._array is None:
             return "Path(None)"
-        return "Path({})".format(self._value.tolist())
+        return "Path({})".format(self._array.tolist())
 
     def __getitem__(self, index):
-        cdef Py_ssize_t point_size = self._size
-        cls = type(self)
+        if self._array is None:
+            raise ValueError("{} is not subscriptable".format(self))
+
         if isinstance(index, slice):
-            sl = slice(*(index.indices(point_size)))
-            return cls(self._value[sl.start : sl.stop : sl.step])
+            return Path(self._array[index])
         elif isinstance(index, numbers.Integral):
-            if index > point_size:
+            if index > self._size:
                 raise IndexError("Path index out of range")
-            return self._value[index]
+            return self._array[index]
         else:
-            raise TypeError("{cls.__name__} indices must be integers".format(cls=cls))
+            raise TypeError("Path indices must be integers")
 
     def __iter__(self):
-        return iter(self._value)
+        return iter(self._array)
 
     def __len__(self):
         return self._size // 2
 
-    @property
-    def value(self):
-        return self._value
-
-    @value.setter
-    def value(self, v):
-        self._value = v
-
-    cdef cl.Path to_clipper_path(self):
+    cdef inline cl.Path to_clipper_path(self):
         cdef np.ndarray v
         cdef cl.Path cl_path = cl.Path()
-        for v in self._value:
-            cl_path.push_back(cl.IntPoint(v[0], v[1]))
+        if self._array is not None:
+            for v in self._array:
+                cl_path.push_back(cl.IntPoint(v[0], v[1]))
         return cl_path
 
     @staticmethod
@@ -150,6 +165,47 @@ cdef class Path:
 
         return Path(py_path_v)
 
+    cdef inline cl.Path cl_path(self):
+        return self._cl_path
+
+    cpdef bint orientation(self):
+        return cl.Orientation(self._cl_path)
+
+    cpdef double area(self):
+        return cl.Area(self._cl_path)
+
+    cpdef list simpify(self, cl.PolyFillType fill_type=cl.pftEvenOdd):
+        """ Removes self-intersections from the supplied polygon.
+        More info: http://www.angusj.com/delphi/clipper/documentation/Docs/Units/ClipperLib/Functions/SimplifyPolygon.htm
+
+        Keyword arguments:
+        poly      -- polygon to be simplified
+        fill_type -- PolyFillType used with the boolean union operation
+
+        Returns:
+        list of simplified polygons (containing one or more polygons)
+        """
+        cdef cl.Paths out_polys
+        cl.SimplifyPolygon(self._cl_path, out_polys, fill_type)
+        return _from_clipper_paths(out_polys)
+
+
+
+cpdef int point_in_polygon(IntPoint point, Path poly):
+    """ Determine where does the point lie regarding the provided polygon.
+    More info: http://www.angusj.com/delphi/clipper/documentation/Docs/Units/ClipperLib/Functions/PointInPolygon.htm
+
+    Keyword arguments:
+    point -- point in question
+    poly  -- closed polygon
+
+    Returns:
+    0  -- point is not in polygon
+    -1 -- point is on polygon
+    1  -- point is in polygon
+    """
+    return cl.PointInPolygon(point.to_clipper_point(),
+                             poly.cl_path())
 
 #=============================  PolyNode =================
 cdef class PolyNode:
@@ -157,7 +213,7 @@ cdef class PolyNode:
     Represents ClipperLibs' PolyTree and PolyNode data structures.
     """
     cdef:
-        public list Contour
+        public Path Contour
         public list Childs
         public PolyNode Parent
         public bint IsHole
@@ -165,7 +221,7 @@ cdef class PolyNode:
         public int depth
 
     def __init__(self):
-        self.Contour = []
+        self.Contour = Path()
         self.Childs = []
         self.Parent = None
         self.IsHole = False
@@ -176,16 +232,16 @@ cdef class PolyNode:
 
 cdef class IntRect:
     cdef:
-        public cl.cInt left
-        public cl.cInt top
-        public cl.cInt right
-        public cl.cInt bottom
+        public int64_t left
+        public int64_t top
+        public int64_t right
+        public int64_t bottom
 
     def __init__(self, *,
-                 left,
-                 top,
-                 right,
-                 bottom):
+                 int64_t left,
+                 int64_t top,
+                 int64_t right,
+                 int64_t bottom):
         self.left = left
         self.top = top
         self.right = right
@@ -829,17 +885,6 @@ cdef cl.Paths _to_clipper_paths(object polygons):
     return paths
 
 
-
-cdef object _from_clipper_paths(cl.Paths paths):
-
-    polys = []
-
-    cdef cl.Path path
-    for i in xrange(paths.size()):
-        path = paths[i]
-        polys.append(_from_clipper_path(path))
-
-    return polys
 
 
 cdef object _from_clipper_path(cl.Path path):
