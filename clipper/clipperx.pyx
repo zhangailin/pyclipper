@@ -2,10 +2,16 @@
 Cython wrapper for the C++ translation of the Angus Johnson's Clipper
 library (ver. 6.2.1) (http://www.angusj.com/delphi/clipper.php)
 
-This wrapper was written by Maxime Chalton, Lukas Treyer and Gregor Ratajc.
+This wrapper was written by Maxime Chalton, Lukas Treyer, Gregor Ratajc and al.
 
 """
+import numpy as np
+cimport numpy as np
+
 cimport ClipperLib as cl
+
+import numbers
+
 
 SILENT = True
 
@@ -50,6 +56,100 @@ PFT_EVENODD  = cl.pftEvenOdd
 PFT_NONZERO  = cl.pftNonZero
 PFT_POSITIVE = cl.pftPositive
 PFT_NEGATIVE = cl.pftNegative
+
+cdef cl.Path _to_clipper_path(object polygon):
+    cdef cl.Path path = cl.Path()
+    for v in polygon:
+        path.push_back(cl.IntPoint(v[0], v[1]))
+    return path
+
+
+cdef cl.IntPoint _to_clipper_point(object py_point):
+    return cl.IntPoint(py_point[0], py_point[1])
+
+
+cdef class IntPoint:
+    cdef:
+        public int X
+        public int Y
+
+    def __init__(self, int X, int Y):
+        self.X = X
+        self.Y = Y
+
+    def __repr__(self):
+        return "IntPoint({}, {})".format(self.X, self.Y)
+
+
+cdef class Path:
+    cdef:
+        np.ndarray _value
+        Py_ssize_t _size
+
+    def __init__(self, object polygon=None):
+        if polygon is None:
+            self._value = None
+            self._size = 0
+        else:
+            self._value = np.asarray(polygon).reshape(-1, 2)
+            self._size = self._value.size // 2
+
+    def __repr__(self):
+        if self._value is None:
+            return "Path(None)"
+        return "Path({})".format(self._value.tolist())
+
+    def __getitem__(self, index):
+        cdef Py_ssize_t point_size = self._size
+        cls = type(self)
+        if isinstance(index, slice):
+            sl = slice(*(index.indices(point_size)))
+            return cls(self._value[sl.start : sl.stop : sl.step])
+        elif isinstance(index, numbers.Integral):
+            if index > point_size:
+                raise IndexError("Path index out of range")
+            return self._value[index]
+        else:
+            raise TypeError("{cls.__name__} indices must be integers".format(cls=cls))
+
+    def __iter__(self):
+        return iter(self._value)
+
+    def __len__(self):
+        return self._size // 2
+
+    @property
+    def value(self):
+        return self._value
+
+    @value.setter
+    def value(self, v):
+        self._value = v
+
+    cdef cl.Path to_clipper_path(self):
+        cdef np.ndarray v
+        cdef cl.Path cl_path = cl.Path()
+        for v in self._value:
+            cl_path.push_back(cl.IntPoint(v[0], v[1]))
+        return cl_path
+
+    @staticmethod
+    cdef Path from_clipper_path(cl.Path cl_path, np.dtype dtype=None):
+        cdef Py_ssize_t cl_path_size = cl_path.size()
+        if dtype is None:
+            dtype = np.int64
+
+        cdef np.ndarray py_path_v = np.empty((cl_path_size, 2), dtype=dtype)
+
+        cdef cl.IntPoint point
+        cdef Py_ssize_t i
+        for i in range(cl_path_size):
+            point = cl_path.at(i)
+            py_path_v[i][0] = point.X
+            py_path_v[i][1] = point.Y
+
+        return Path(py_path_v)
+
 
 #=============================  PolyNode =================
 cdef class PolyNode:
@@ -728,18 +828,6 @@ cdef cl.Paths _to_clipper_paths(object polygons):
         paths.push_back(_to_clipper_path(poly))
     return paths
 
-
-cdef cl.Path _to_clipper_path(object polygon):
-    _check_scaling_factor()
-
-    cdef cl.Path path = cl.Path()
-    for v in polygon:
-        path.push_back(_to_clipper_point(v))
-    return path
-
-
-cdef cl.IntPoint _to_clipper_point(object py_point):
-    return cl.IntPoint(py_point[0], py_point[1])
 
 
 cdef object _from_clipper_paths(cl.Paths paths):
