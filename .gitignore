@@ -1,9 +1,9 @@
 .idea
 build/
 dist
-pyclipper.egg-info
+clipper.egg-info
 *.so
-pyclipper/pyclipper.cpp
+clipper/clipper.cpp
 *.pyc
 *.pyo
 MANIFEST

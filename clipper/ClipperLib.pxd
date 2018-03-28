@@ -1,7 +1,7 @@
 from libcpp.vector cimport vector
 
 
-cdef extern from "clipper.hpp" namespace "ClipperLib":
+cdef extern from "ClipperLib/clipper.hpp" namespace "ClipperLib":
     # enum ClipType { ctIntersection, ctUnion, ctDifference, ctXor };
     cdef enum ClipType:
         ctIntersection = 1,

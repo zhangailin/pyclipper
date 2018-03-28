@@ -1,9 +1,9 @@
-from __future__ import print_function
 import sys
 import os
 from setuptools import setup
 from setuptools.extension import Extension
 from io import open
+import numpy as np
 
 """
 Note on using the setup.py:
@@ -23,7 +23,7 @@ if dev_mode:
     from Cython.Distutils import build_ext
 
     print('Development mode: Compiling Cython modules from .pyx sources.')
-    sources = ["pyclipper/pyclipper.pyx", "pyclipper/clipper.cpp"]
+    sources = ["clipper/clipper.pyx", "clipper/ClipperLib/clipper.cpp"]
 
     from setuptools.command.sdist import sdist as _sdist
 
@@ -40,7 +40,7 @@ if dev_mode:
 
 else:
     print('Distribution mode: Compiling Cython generated .cpp sources.')
-    sources = ["pyclipper/pyclipper.cpp", "pyclipper/clipper.cpp"]
+    sources = ["clipper/clipper.cpp", "clipper/ClipperLib/clipper.cpp"]
     cmdclass = {}
 
 
@@ -48,9 +48,10 @@ needs_pytest = {'pytest', 'test'}.intersection(sys.argv)
 pytest_runner = ['pytest_runner'] if needs_pytest else []
 
 
-ext = Extension("pyclipper",
+ext = Extension("clipper",
                 sources=sources,
                 language="c++",
+                include_dirs=[np.get_include()],
                 # define extra macro definitions that are used by clipper
                 # Available definitions that can be used with pyclipper:
                 # use_lines, use_int32
@@ -62,7 +63,7 @@ with open("README.rst", "r", encoding='utf-8') as readme:
     long_description = readme.read()
 
 setup(
-    name='pyclipper',
+    name='clipper',
     use_scm_version=True,
     description='Cython wrapper for the C++ translation of the Angus Johnson\'s Clipper library (ver. 6.4.2)',
     long_description=long_description,

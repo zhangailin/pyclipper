@@ -5,7 +5,7 @@ library (ver. 6.2.1) (http://www.angusj.com/delphi/clipper.php)
 This wrapper was written by Maxime Chalton, Lukas Treyer and Gregor Ratajc.
 
 """
-cimport clipper as cl
+cimport ClipperLib as cl
 
 SILENT = True
 
