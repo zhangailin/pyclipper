@@ -1,7 +1,7 @@
 #ifndef extra_defines_hpp
 #define extra_defines_hpp
 
-#include "clipper.hpp"
+#include "ClipperLib/clipper.hpp"
 
 #ifdef use_xyz
 #define _USE_XYZ 1

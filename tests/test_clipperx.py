@@ -4,16 +4,19 @@ Tests for Pyclipper wrapper library.
 """
 
 from unittest import TestCase, main
+import sys
+import clipperx
 
 integer_types = (int,)
 
-import clipper
 
 # Example polygons from http://www.angusj.com/delphi/clipper.php
-PATH_SUBJ_1 = [[180, 200], [260, 200], [260, 150], [180, 150]]  # square, orientation is False
+# square, orientation is False
+PATH_SUBJ_1 = [[180, 200], [260, 200], [260, 150], [180, 150]]
 PATH_SUBJ_2 = [[215, 160], [230, 190], [200, 190]]  # triangle
 PATH_CLIP_1 = [[190, 210], [240, 210], [240, 130], [190, 130]]  # square
-PATH_SIGMA = [[300, 400], [100, 400], [200, 300], [100, 200], [300, 200]]  # greek letter sigma
+# greek letter sigma
+PATH_SIGMA = [[300, 400], [100, 400], [200, 300], [100, 200], [300, 200]]
 PATTERN = [[4, -6], [6, -6], [-4, 6], [-6, 6]]
 INVALID_PATH = [[1, 1], ]  # less than 2 vertices
 
@@ -24,9 +27,12 @@ class TestPyclipperModule(TestCase):
         self.assertTrue(hasattr(clipper, 'PyclipperOffset'))
 
     def test_has_namespace_methods(self):
-        for method in ('Orientation', 'Area', 'PointInPolygon', 'SimplifyPolygon', 'SimplifyPolygons',
-                       'CleanPolygon', 'CleanPolygons', 'MinkowskiSum', 'MinkowskiSum2', 'MinkowskiDiff',
-                       'PolyTreeToPaths', 'ClosedPathsFromPolyTree', 'OpenPathsFromPolyTree',
+        for method in ('Orientation', 'Area', 'PointInPolygon',
+                       'SimplifyPolygon', 'SimplifyPolygons',
+                       'CleanPolygon', 'CleanPolygons', 'MinkowskiSum',
+                       'MinkowskiSum2', 'MinkowskiDiff',
+                       'PolyTreeToPaths', 'ClosedPathsFromPolyTree',
+                       'OpenPathsFromPolyTree',
                        'ReversePath', 'ReversePaths'):
             self.assertTrue(hasattr(clipper, method))
 
@@ -170,19 +176,23 @@ class TestPyclipperAddPaths(TestCase):
 
     def test_add_paths(self):
         # should not raise an exception
-        self.pc.AddPaths([PATH_SUBJ_1, PATH_SUBJ_2], poly_type=clipper.PT_SUBJECT)
+        self.pc.AddPaths([PATH_SUBJ_1, PATH_SUBJ_2],
+                         poly_type=clipper.PT_SUBJECT)
 
     def test_add_path_invalid_path(self):
-        self.assertRaises(clipper.ClipperException, self.pc.AddPath, INVALID_PATH, clipper.PT_CLIP, True)
+        self.assertRaises(clipper.ClipperException, self.pc.AddPath,
+                          INVALID_PATH, clipper.PT_CLIP, True)
 
     def test_add_paths_invalid_path(self):
-        self.assertRaises(clipper.ClipperException, self.pc.AddPaths, [INVALID_PATH, INVALID_PATH],
+        self.assertRaises(clipper.ClipperException, self.pc.AddPaths,
+                          [INVALID_PATH, INVALID_PATH],
                           clipper.PT_CLIP, True)
         try:
             self.pc.AddPaths([INVALID_PATH, PATH_CLIP_1], clipper.PT_CLIP)
             self.pc.AddPaths([PATH_CLIP_1, INVALID_PATH], clipper.PT_CLIP)
         except clipper.ClipperException:
-            self.fail("add_paths raised ClipperException when not all paths were invalid")
+            self.fail("add_paths raised ClipperException "
+                      "when not all paths were invalid")
 
 
 class TestClassProperties(TestCase):
@@ -193,7 +203,9 @@ class TestClassProperties(TestCase):
 
     def test_clipper_properties(self):
         pc = clipper.Pyclipper()
-        for prop_name in ('ReverseSolution', 'PreserveCollinear', 'StrictlySimple'):
+        for prop_name in ('ReverseSolution',
+                          'PreserveCollinear',
+                          'StrictlySimple'):
             self.check_property_assignment(pc, prop_name, [True, False])
 
     def test_clipperoffset_properties(self):
@@ -201,7 +213,8 @@ class TestClassProperties(TestCase):
             clipper.SCALING_FACTOR = 10 ** factor
             pc = clipper.PyclipperOffset()
             for prop_name in ('MiterLimit', 'ArcTolerance'):
-                self.check_property_assignment(pc, prop_name, [2.912, 132.12, 12, -123])
+                self.check_property_assignment(pc, prop_name,
+                                               [2.912, 132.12, 12, -123])
 
 
 class TestPyclipperExecute(TestCase):
@@ -209,7 +222,8 @@ class TestPyclipperExecute(TestCase):
         clipper.SCALING_FACTOR = 1
         self.pc = clipper.Pyclipper()
         self.add_default_paths(self.pc)
-        self.default_args = [clipper.CT_INTERSECTION, clipper.PFT_EVENODD, clipper.PFT_EVENODD]
+        self.default_args = [clipper.CT_INTERSECTION,
+                             clipper.PFT_EVENODD, clipper.PFT_EVENODD]
 
     @staticmethod
     def add_default_paths(pc):
@@ -218,9 +232,13 @@ class TestPyclipperExecute(TestCase):
 
     @staticmethod
     def add_paths(pc, clip_path, subj_paths, addend=None, multiplier=None):
-        pc.AddPath(_modify_vertices(clip_path, addend=addend, multiplier=multiplier), clipper.PT_CLIP)
+        pc.AddPath(_modify_vertices(clip_path,
+                                    addend=addend, multiplier=multiplier),
+                   clipper.PT_CLIP)
         for subj_path in subj_paths:
-            pc.AddPath(_modify_vertices(subj_path, addend=addend, multiplier=multiplier), clipper.PT_SUBJECT)
+            pc.AddPath(_modify_vertices(subj_path,
+                                        addend=addend, multiplier=multiplier),
+                       clipper.PT_SUBJECT)
 
     def test_get_bounds(self):
         bounds = self.pc.GetBounds()
@@ -239,6 +257,13 @@ class TestPyclipperExecute(TestCase):
         self.assertIsInstance(solution, clipper.PolyNode)
         self.check_pypolynode(solution)
 
+    def test_execute_empty(self):
+        pc = clipper.Pyclipper()
+        with self.assertRaises(clipper.ClipperException):
+            pc.Execute(clipper.CT_UNION,
+                       clipper.PFT_NONZERO,
+                       clipper.PFT_NONZERO)
+
     def test_clear(self):
         self.pc.Clear()
         with self.assertRaises(clipper.ClipperException):
@@ -246,19 +271,20 @@ class TestPyclipperExecute(TestCase):
 
     def test_exact_results(self):
         """
-        Test whether coordinates passed into the library are returned exactly, if they are not affected by the
-        operation.
+        Test whether coordinates passed into the library are returned
+        exactly, if they are not affected by the operation.
         """
 
         pc = clipper.Pyclipper()
 
         # Some large triangle.
-        path = [[[0, 1], [0, 0], [15 ** 15, 0]]]
+        paths = [[[0, 1], [0, 0], [15 ** 15, 0]]]
 
-        pc.AddPaths(path, clipper.PT_SUBJECT, True)
-        result = pc.Execute(clipper.PT_CLIP, clipper.PFT_EVENODD, clipper.PFT_EVENODD)
+        pc.AddPaths(paths, clipper.PT_SUBJECT, True)
+        result = pc.Execute(clipper.PT_CLIP,
+                            clipper.PFT_EVENODD, clipper.PFT_EVENODD)
 
-        assert result == path
+        self.assertEqual(result, paths)
 
     def check_pypolynode(self, node):
         self.assertTrue(len(node.Contour) is 0 or len(node.Contour) > 2)
@@ -319,7 +345,8 @@ class TestScalingFactorWarning(TestCase):
 
     def test_point_in_polygon(self):
         with self.assertWarns(DeprecationWarning):
-            self.assertEqual(clipper.PointInPolygon((180, 200), PATH_SUBJ_1), -1)
+            self.assertEqual(clipper.PointInPolygon((180, 200),
+                                                      PATH_SUBJ_1), -1)
 
     def test_minkowski_sum(self):
         with self.assertWarns(DeprecationWarning):
@@ -339,11 +366,12 @@ class TestScalingFactorWarning(TestCase):
 
     def test_add_paths(self):
         with self.assertWarns(DeprecationWarning):
-            self.pc.AddPaths([PATH_SUBJ_1, PATH_SUBJ_2], poly_type=clipper.PT_SUBJECT)
+            self.pc.AddPaths([PATH_SUBJ_1, PATH_SUBJ_2],
+                             poly_type=clipper.PT_SUBJECT)
 
 
 class TestScalingFunctions(TestCase):
-    scale = 2 ** 31
+    scale = 2 ** 15
     path = [(0, 0), (1, 1)]
     paths = [path] * 3
 
@@ -402,8 +430,8 @@ class TestNonStandardNumbers(TestCase):
         except ImportError:
             self.skipTest("Skipping, sympy not available")
 
-        path = [(0,0), (0,1)]
-        path = [Point2D(v) for v in [(0,0), (0,1)]]
+        path = [(0, 0), (0, 1)]
+        path = [Point2D(v) for v in [(0, 0), (0, 1)]]
         assert type(path[0].x) == Zero
         path = clipper.scale_to_clipper(path)
         assert path == [[0, 0], [0, 2147483648]]
@@ -413,8 +441,10 @@ def _do_solutions_match(paths_1, paths_2, factor=None):
     if len(paths_1) != len(paths_2):
         return False
 
-    paths_1 = [_modify_vertices(p, multiplier=factor, converter=round if factor else None) for p in paths_1]
-    paths_2 = [_modify_vertices(p, multiplier=factor, converter=round if factor else None) for p in paths_2]
+    paths_1 = [_modify_vertices(p, multiplier=factor, converter=round
+                                if factor else None) for p in paths_1]
+    paths_2 = [_modify_vertices(p, multiplier=factor, converter=round
+                                if factor else None) for p in paths_2]
 
     return all(((p_1 in paths_2) for p_1 in paths_1))
 

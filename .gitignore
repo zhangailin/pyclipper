@@ -4,6 +4,7 @@ dist
 clipper.egg-info
 *.so
 clipper/clipper.cpp
+clipper/clipperx.cpp
 *.pyc
 *.pyo
 MANIFEST

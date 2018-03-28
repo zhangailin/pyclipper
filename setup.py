@@ -1,8 +1,5 @@
-import sys
-import os
-from setuptools import setup
-from setuptools.extension import Extension
-from io import open
+from distutils.core import setup, Extension
+from Cython.Build import cythonize
 import numpy as np
 
 """
@@ -17,54 +14,35 @@ This way the package can be used without or with an incompatible version of Cyth
 
 The idea comes from: https://github.com/MattShannon/bandmat
 """
-dev_mode = os.path.exists('dev')
-
-if dev_mode:
-    from Cython.Distutils import build_ext
-
-    print('Development mode: Compiling Cython modules from .pyx sources.')
-    sources = ["clipper/clipper.pyx", "clipper/ClipperLib/clipper.cpp"]
-
-    from setuptools.command.sdist import sdist as _sdist
-
-    class sdist(_sdist):
-        """ Run 'cythonize' on *.pyx sources to ensure the .cpp files included
-        in the source distribution are up-to-date.
-        """
-        def run(self):
-            from Cython.Build import cythonize
-            cythonize(sources, language='c++')
-            _sdist.run(self)
-
-    cmdclass = {'sdist': sdist, 'build_ext': build_ext}
-
-else:
-    print('Distribution mode: Compiling Cython generated .cpp sources.')
-    sources = ["clipper/clipper.cpp", "clipper/ClipperLib/clipper.cpp"]
-    cmdclass = {}
 
 
-needs_pytest = {'pytest', 'test'}.intersection(sys.argv)
-pytest_runner = ['pytest_runner'] if needs_pytest else []
+print('Development mode: Compiling Cython modules from .pyx sources.')
 
-
-ext = Extension("clipper",
-                sources=sources,
-                language="c++",
-                include_dirs=[np.get_include()],
-                # define extra macro definitions that are used by clipper
-                # Available definitions that can be used with pyclipper:
-                # use_lines, use_int32
-                # See pyclipper/clipper.hpp
-                # define_macros=[('use_lines', 1)]
-                )
+ext_clipper = Extension("clipper",
+                        sources=["clipper/clipper.pyx", "clipper/ClipperLib/clipper.cpp"],
+                        language="c++",
+                        # define extra macro definitions that are used by clipper
+                        # Available definitions that can be used with pyclipper:
+                        # use_lines, use_int32
+                        # See clipper/ClipperLib/clipper.hpp
+                        # define_macros=[('use_lines', 1)]
+                        )
+ext_clipperx = Extension("clipperx",
+                         sources=["clipper/clipperx.pyx", "clipper/ClipperLib/clipper.cpp"],
+                         language="c++",
+                         include_dirs=[np.get_include()],
+                         # define extra macro definitions that are used by clipper
+                         # Available definitions that can be used with pyclipper:
+                         # use_lines, use_int32
+                         # See clipper/ClipperLib/clipper.hpp
+                         # define_macros=[('use_lines', 1)]
+                         )
 
 with open("README.rst", "r", encoding='utf-8') as readme:
     long_description = readme.read()
 
 setup(
     name='clipper',
-    use_scm_version=True,
     description='Cython wrapper for the C++ translation of the Angus Johnson\'s Clipper library (ver. 6.4.2)',
     long_description=long_description,
     author='Angus Johnson, Maxime Chalton, Lukas Treyer, Gregor Ratajc',
@@ -88,11 +66,5 @@ setup(
         "Topic :: Scientific/Engineering :: Mathematics",
         "Topic :: Software Development :: Libraries :: Python Modules"
     ],
-    ext_modules=[ext],
-    setup_requires=[
-       'setuptools_scm>=1.11.1',
-       'setuptools_scm_git_archive>=1.0',
-    ] + pytest_runner,
-    tests_require=['unittest2', 'pytest'],
-    cmdclass=cmdclass,
+    ext_modules=cythonize([ext_clipper, ext_clipperx]),
 )
