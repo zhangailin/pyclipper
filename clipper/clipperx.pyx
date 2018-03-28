@@ -190,6 +190,21 @@ cdef class Path:
         return _from_clipper_paths(out_polys)
 
 
+    cpdef Path clean(self, double distance=1.415):
+        """ Removes unnecessary vertices from the provided polygon.
+        More info: http://www.angusj.com/delphi/clipper/documentation/Docs/Units/ClipperLib/Functions/CleanPolygon.htm
+
+        Keyword arguments:
+        poly     -- polygon to be cleaned
+        distance -- distance on which vertices are removed, see 'More info' (default: approx. sqrt of 2)
+
+        Returns:
+        cleaned polygon
+        """
+        cdef cl.Path out_poly
+        cl.CleanPolygon(self._cl_path, out_poly, distance)
+        return Path.from_clipper_path(out_poly)
+
 
 cpdef int point_in_polygon(IntPoint point, Path poly):
     """ Determine where does the point lie regarding the provided polygon.

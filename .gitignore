@@ -12,4 +12,4 @@ MANIFEST
 .*.swp
 .*.swo
 *.dll
-
+.python-version
