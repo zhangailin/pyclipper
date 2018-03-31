@@ -8,6 +8,7 @@ This wrapper was written by Maxime Chalton, Lukas Treyer, Gregor Ratajc and al.
 import numpy as np
 cimport numpy as np
 from libc.stdint cimport int64_t
+#cimport cpython.list
 
 cimport ClipperLib as cl
 
@@ -69,8 +70,8 @@ cdef cl.IntPoint _to_clipper_point(object py_point):
     return cl.IntPoint(py_point[0], py_point[1])
 
 
-cdef list _from_clipper_paths(cl.Paths paths):
-    cdef list polys = []
+cdef PathList _from_clipper_paths(cl.Paths paths):
+    cdef PathList polys = PathList()
 
     cdef cl.Path cl_path
     cdef unsigned int i
@@ -99,6 +100,28 @@ cdef class IntPoint:
     @staticmethod
     cdef IntPoint from_clipper_point(cl.IntPoint cl_point):
         return IntPoint(cl_point.X, cl_point.Y)
+
+
+cdef class PathList(list):
+    cdef inline cl.Paths to_clipper_paths(self):
+        cdef cl.Paths cl_paths = cl.Paths()
+        cdef Path poly
+        for poly in self:
+            cl_paths.push_back(poly.cl_path())
+        return cl_paths
+
+    @staticmethod
+    cdef PathList from_clipper_paths(cl.Paths cl_paths, np.dtype dtype=None):
+        cdef PathList polys = PathList()
+
+        cdef cl.Path cl_path
+        cdef unsigned int i
+        for i in range(cl_paths.size()):
+            cl_path = cl_paths.at(i)
+            polys.append(Path.from_clipper_path(cl_path, dtype))
+
+        return polys
+
 
 
 cdef class Path:
@@ -174,7 +197,7 @@ cdef class Path:
     cpdef double area(self):
         return cl.Area(self._cl_path)
 
-    cpdef list simpify(self, cl.PolyFillType fill_type=cl.pftEvenOdd):
+    cpdef PathList simpify(self, cl.PolyFillType fill_type=cl.pftEvenOdd):
         """ Removes self-intersections from the supplied polygon.
         More info: http://www.angusj.com/delphi/clipper/documentation/Docs/Units/ClipperLib/Functions/SimplifyPolygon.htm
 
