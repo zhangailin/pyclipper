@@ -4,7 +4,6 @@ Tests for Pyclipper wrapper library.
 """
 
 from unittest import TestCase, main
-import sys
 import clipper
 
 integer_types = (int,)
