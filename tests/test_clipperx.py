@@ -12,7 +12,7 @@ integer_types = (int,)
 
 # Example polygons from http://www.angusj.com/delphi/clipper.php
 # square, orientation is False
-PATH_SUBJ_1 = [[180, 200], [260, 200], [260, 150], [180, 150]]
+PATH_SUBJ_1 = [[180, 200], [260, 200], [260, 150], [180, 150], [180, 200]]
 PATH_SUBJ_2 = [[215, 160], [230, 190], [200, 190]]  # triangle
 PATH_CLIP_1 = [[190, 210], [240, 210], [240, 130], [190, 130]]  # square
 # greek letter sigma
@@ -43,12 +43,12 @@ class TestClipperModule(TestCase):
 
 class TestNamespaceMethods(TestCase):
     def setUp(self):
-        self.path1 = clipperx.Path(np.array(PATH_SUBJ_1, dtype=np.int64))
-        self.path2 = clipperx.Path(np.array(PATH_SUBJ_2, dtype=np.int64))
-        self.pattern = clipperx.Path(np.array(PATTERN, dtype=np.int64))
-        self.sigma = clipperx.Path(np.array(PATH_SIGMA, dtype=np.int64))
+        self.path1 = clipperx.Path(np.array(PATH_SUBJ_1, dtype=np.int32))
+        self.path2 = clipperx.Path(np.array(PATH_SUBJ_2, dtype=np.int32))
+        self.pattern = clipperx.Path(np.array(PATTERN, dtype=np.int32))
+        self.sigma = clipperx.Path(np.array(PATH_SIGMA, dtype=np.int32))
 
-        self.clip1 = clipperx.Path(np.array(PATH_CLIP_1, dtype=np.int64))
+        self.clip1 = clipperx.Path(np.array(PATH_CLIP_1, dtype=np.int32))
 
     def test_orientation(self):
         self.assertFalse(self.path1.orientation())

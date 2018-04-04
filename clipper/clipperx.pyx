@@ -13,9 +13,6 @@ cimport ClipperLib as cl
 
 import numbers
 
-import warnings as _warnings
-
-
 #============================= Enum mapping ================
 
 JT_SQUARE = cl.jtSquare
@@ -179,7 +176,10 @@ cdef class Path:
             self._array = None
             self._size = 0
         else:
-            self._array = np.asarray(polygon).reshape(-1, 2)
+            if isinstance(polygon, np.ndarray):
+                self._array = polygon.reshape(-1, 2)
+            else:
+                self._array = np.asarray(polygon, dtype=np.int64).reshape(-1, 2)
             self._size = self._array.size // 2
             self._cl_path = self.to_clipper_path()
 
@@ -196,7 +196,7 @@ cdef class Path:
             return Path(self._array[index])
         elif isinstance(index, numbers.Integral):
             if index > self._size:
-                raise IndexError("Path index out of range")
+                raise IndexError("Path index is out of range")
             return self._array[index]
         else:
             raise TypeError("Path indices must be integers")
@@ -439,7 +439,6 @@ cdef class Clipper:
         cdef cl.Path cl_path = path.cl_path()
         cdef bint result = self.thisptr.AddPath(cl_path, poly_type, closed)
         if not result:
-            print("\n>>>&&&&&&&&&<<<\n")
             raise ClipperException('The path is invalid for clipping')
         return result
 
@@ -682,6 +681,7 @@ cpdef Path reverse_path(Path path):
     cdef cl.Path cl_path = path.cl_path()
     cl.ReversePath(cl_path)
     return Path.from_clipper_path(cl_path)
+
 
 cpdef PathList reverse_pathlist(PathList path_list):
     """ Reverses the vertex order (and hence orientation) in the specified path.
