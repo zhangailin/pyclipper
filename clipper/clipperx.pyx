@@ -768,3 +768,5 @@ cpdef PathList minkowski_diff(Path poly1, Path poly2):
     cl.MinkowskiDiff(poly1.to_clipper_path(), poly2.to_clipper_path(), solution)
     return PathList.from_clipper_paths(solution)
 
+
+## END HERE
