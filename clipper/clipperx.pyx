@@ -629,7 +629,7 @@ cdef class ClipperOffset:
         self.thisptr.Execute(c_solution, delta)
         return PathList.from_clipper_paths(c_solution)
 
-    cpdef execute_as_polytree(self, double delta):
+    cpdef PolyNode execute_as_polytree(self, double delta):
         """ Performs the offset operation and returns a PolyNode with offset paths.
         More info: http://www.angusj.com/delphi/clipper/documentation/Docs/Units/ClipperLib/Classes/ClipperOffset/Methods/Execute.htm
 
