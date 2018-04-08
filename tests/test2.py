@@ -24,8 +24,9 @@ path_1_rev3 = path_1_rev2[::-1]
 print("path_1_rev3:", path_1_rev3)
 print("path_1_rev3.orientation:", path_1_rev3.orientation())
 
-point_1 = clx.IntPoint(210, 170)
+point_1 = clx.Point(210, 170)
 print("point_1:", point_1)
-print("(clx.point_in_polygon(point_1, path_1)):", clx.point_in_polygon(point_1, path_1))
-print(clx.point_in_polygon(clx.IntPoint(300, 300), path_1))
-print(clx.point_in_polygon(clx.IntPoint(260, 180), path_1))
+print("(clx.point_in_polygon(point_1, path_1)):",
+      clx.point_in_polygon(point_1, path_1))
+print(clx.point_in_polygon(clx.Point(300, 300), path_1))
+print(clx.point_in_polygon(clx.Point(260, 180), path_1))

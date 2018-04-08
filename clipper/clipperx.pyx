@@ -69,6 +69,10 @@ cdef class Point:
     cdef Point from_clipper_point(cl.IntPoint cl_point):
         return Point(cl_point.X, cl_point.Y)
 
+    @staticmethod
+    def from_ndarray(np.ndarray array)-> Point:
+        return Point(array[0], array[1])
+
 
 cdef class Rect:
     cdef:
@@ -610,7 +614,7 @@ cdef class ClipperOffset:
         """
         self.thisptr.AddPaths(pathlist.to_clipper_paths(), join_type, end_type)
 
-    cpdef execute(self, double delta):
+    cpdef PathList execute(self, double delta):
         """ Performs the offset operation and returns a list of offset paths.
         More info: http://www.angusj.com/delphi/clipper/documentation/Docs/Units/ClipperLib/Classes/ClipperOffset/Methods/Execute.htm
 
@@ -625,7 +629,7 @@ cdef class ClipperOffset:
         self.thisptr.Execute(c_solution, delta)
         return PathList.from_clipper_paths(c_solution)
 
-    cpdef execute_as_polytree(self, double delta):
+    cpdef PolyNode execute_as_polytree(self, double delta):
         """ Performs the offset operation and returns a PolyNode with offset paths.
         More info: http://www.angusj.com/delphi/clipper/documentation/Docs/Units/ClipperLib/Classes/ClipperOffset/Methods/Execute.htm
 
