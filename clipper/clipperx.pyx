@@ -13,6 +13,14 @@ cimport ClipperLib as cl
 
 import numbers
 
+
+cdef inline int64_t i64min(int64_t a, int64_t b):
+    return a if a < b else b
+
+
+cdef inline int64_t i64max(int64_t a, int64_t b):
+    return a if a > b else b
+
 #============================= Enum mapping ================
 
 JT_SQUARE = cl.jtSquare
@@ -77,10 +85,10 @@ cdef class Rect:
         """
         Init left/top/right/bottom
         """
-        self.left = left
-        self.top = top
-        self.right = right
-        self.bottom = bottom
+        self.left   = i64min(left, right)
+        self.right  = i64max(left, right)
+        self.top    = i64min(bottom, top)
+        self.bottom = i64max(bottom, top)
 
     @staticmethod
     cdef Rect from_clipper_rect(cl.IntRect cl_rect):
@@ -88,6 +96,7 @@ cdef class Rect:
                     top=cl_rect.top,
                     right=cl_rect.right,
                     bottom=cl_rect.bottom)
+
 
 
 cdef class PathList(list):
@@ -168,19 +177,19 @@ cdef class PathList(list):
 cdef class Path:
     cdef:
         np.ndarray _array
-        Py_ssize_t _size
-        cl.Path _cl_path
+        Py_ssize_t _length
+        cl.Path    _cl_path
 
     def __init__(self, object polygon=None):
         if polygon is None:
             self._array = None
-            self._size = 0
+            self._length = 0
         else:
             if isinstance(polygon, np.ndarray):
                 self._array = polygon.reshape(-1, 2)
             else:
                 self._array = np.asarray(polygon, dtype=np.int64).reshape(-1, 2)
-            self._size = self._array.size // 2
+            self._length = self._array.size // 2
             self._cl_path = self.to_clipper_path()
 
     def __repr__(self):
@@ -195,7 +204,7 @@ cdef class Path:
         if isinstance(index, slice):
             return Path(self._array[index])
         elif isinstance(index, numbers.Integral):
-            if index > self._size:
+            if index > self._length:
                 raise IndexError("Path index is out of range")
             return self._array[index]
         else:
@@ -205,7 +214,7 @@ cdef class Path:
         return iter(self._array)
 
     def __len__(self):
-        return self._size
+        return self._length
 
     def __eq__(self, Path other):
         return np.all(self._array == other.array())
@@ -220,13 +229,13 @@ cdef class Path:
 
     @staticmethod
     cdef Path from_clipper_path(cl.Path cl_path, dtype=np.int64):
-        cdef Py_ssize_t cl_path_size = cl_path.size()
+        cdef Py_ssize_t cl_path_length = cl_path.size()
 
-        cdef np.ndarray py_path_v = np.empty((cl_path_size, 2), dtype=dtype)
+        cdef np.ndarray py_path_v = np.empty((cl_path_length, 2), dtype=dtype)
 
         cdef cl.IntPoint point
         cdef Py_ssize_t i
-        for i in range(cl_path_size):
+        for i in range(cl_path_length):
             point = cl_path.at(i)
             py_path_v[i][0] = point.X
             py_path_v[i][1] = point.Y
@@ -300,6 +309,7 @@ cdef class Path:
 
     cpdef scale_from(self, double s=2**31):
         return Path((self._array / s).astype(np.int64))
+
 
 
 cdef class PolyNode:
