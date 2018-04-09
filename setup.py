@@ -1,54 +1,70 @@
-from distutils.core import setup, Extension
-from Cython.Build import cythonize
 import numpy as np
+import os
 
-"""
-Note on using the setup.py:
-setup.py operates in 2 modes that are based on the presence of the 'dev' file in the root of the project.
- - When 'dev' is present, Cython will be used to compile the .pyx sources. This is the development mode
-   (as you get it in the git repository).
- - When 'dev' is absent, C/C++ compiler will be used to compile the .cpp sources (that were prepared in
-   in the development mode). This is the distribution mode (as you get it on PyPI).
+from distutils.command.build_ext import build_ext
+try:
+    from setuptools import Extension, setup
+except ImportError:
+    from distutils.core import Extension, setup
 
-This way the package can be used without or with an incompatible version of Cython.
-
-The idea comes from: https://github.com/MattShannon/bandmat
-"""
+from Cython.Build import cythonize
 
 
-print('Development mode: Compiling Cython modules from .pyx sources.')
+# By subclassing build_extensions we have the actual compiler that will be used which is really known only after finalize_options
+# http://stackoverflow.com/questions/724664/python-distutils-how-to-get-a-compiler-that-is-going-to-be-used
+compile_options =  {'msvc'  : ['/Ox', '/EHsc'],
+                    'other' : ['-O3', '-Wno-strict-prototypes', '-Wno-unused-function']}
+link_options    =  {'msvc'  : [],
+                    'other' : []}
 
-ext_clipper = Extension("clipper",
-                        sources=["clipper/clipper.pyx", "clipper/ClipperLib/clipper.cpp"],
-                        language="c++",
-                        # define extra macro definitions that are used by clipper
-                        # Available definitions that can be used with pyclipper:
-                        # use_lines, use_int32
-                        # See clipper/ClipperLib/clipper.hpp
-                        # define_macros=[('use_lines', 1)]
-                        )
-ext_clipperx = Extension("clipperx",
-                         sources=["clipper/clipperx.pyx", "clipper/ClipperLib/clipper.cpp"],
-                         language="c++",
-                         include_dirs=[np.get_include()],
-                         # define extra macro definitions that are used by clipper
-                         # Available definitions that can be used with pyclipper:
-                         # use_lines, use_int32
-                         # See clipper/ClipperLib/clipper.hpp
-                         # define_macros=[('use_lines', 1)]
-                         )
+class build_ext_options:
+    def build_options(self):
+        for e in self.extensions:
+            e.extra_compile_args = compile_options.get(
+                self.compiler.compiler_type, compile_options['other'])
+        for e in self.extensions:
+            e.extra_link_args = link_options.get(
+                self.compiler.compiler_type, link_options['other'])
+
+class build_ext_subclass(build_ext, build_ext_options):
+    def build_extensions(self):
+        build_ext_options.build_options(self)
+        build_ext.build_extensions(self)
+
+
+info = {}
+filename = os.path.join('clipper', '_version.py')
+exec(compile(open(filename, 'rb').read().replace(b'\r\n', b'\n'),
+                 filename, 'exec'), info)
+VERSION = info['__version__']
+
+
+print("Compiling Cython modules from .pyx sources.")
+
+exts = []
+for mod_name in ["clipper", "clipperx"]:
+    exts.append(Extension("clipper.{}".format(mod_name),
+        sources=["clipper/{}.pyx".format(mod_name),
+            "clipper/ClipperLib/clipper.cpp"],
+        language="c++",
+        # define extra macro definitions that are used by clipper
+        # Available definitions that can be used with pyclipper:
+        # use_lines, use_int32
+        # See clipper/ClipperLib/clipper.hpp
+        # define_macros=[('use_lines', 1)]
+        ))
 
 with open("README.rst", "r", encoding='utf-8') as readme:
     long_description = readme.read()
 
 setup(
     name='clipper',
+    version=VERSION,
+    packages=['clipper'],
     description='Cython wrapper for the C++ translation of the Angus Johnson\'s Clipper library (ver. 6.4.2)',
     long_description=long_description,
     author='Angus Johnson, Maxime Chalton, Lukas Treyer, Gregor Ratajc',
-    author_email='me@gregorratajc.com',
     license='MIT',
-    url='https://github.com/greginvm/pyclipper',
     keywords=[
         'polygon clipping, polygon intersection, polygon union, polygon offsetting, polygon boolean, polygon, clipping, clipper, vatti'],
     classifiers=[
@@ -66,5 +82,6 @@ setup(
         "Topic :: Scientific/Engineering :: Mathematics",
         "Topic :: Software Development :: Libraries :: Python Modules"
     ],
-    ext_modules=cythonize([ext_clipper, ext_clipperx]),
+    ext_modules=cythonize(exts),
+    cmdclass = {'build_ext': build_ext_subclass},
 )
