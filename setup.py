@@ -47,6 +47,7 @@ for mod_name in ["clipper", "clipperx"]:
         sources=["clipper/{}.pyx".format(mod_name),
             "clipper/ClipperLib/clipper.cpp"],
         language="c++",
+        include_dirs=[np.get_include()],
         # define extra macro definitions that are used by clipper
         # Available definitions that can be used with pyclipper:
         # use_lines, use_int32
